@@ -1,0 +1,373 @@
+basePath: /api/v1
+definitions:
+  config.Config:
+    properties:
+      databaseURL:
+        type: string
+      externalAPIURL:
+        type: string
+    type: object
+  controllers.AddUserRequest:
+    properties:
+      passportNumber:
+        type: string
+    type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+  models.People:
+    properties:
+      address:
+        description: Address of the person
+        type: string
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      name:
+        description: Name of the person
+        type: string
+      passportNumber:
+        description: Passport number (unique, not null)
+        type: integer
+      passportSeries:
+        description: Passport series (unique, not null)
+        type: integer
+      patronymic:
+        description: Patronymic (middle name) of the person
+        type: string
+      surname:
+        description: Surname of the person
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.Task:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      description:
+        description: Description of the task
+        type: string
+      duration:
+        description: Duration of the task in minutes
+        type: integer
+      endTime:
+        description: End time of the task
+        type: string
+      id:
+        type: integer
+      startTime:
+        description: Start time of the task
+        type: string
+      updatedAt:
+        type: string
+      userID:
+        description: ID of the user associated with the task
+        type: integer
+    type: object
+  models.User:
+    properties:
+      address:
+        description: Address of the user
+        type: string
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: integer
+      name:
+        description: Name of the user
+        type: string
+      passportNumber:
+        description: Passport number of the user (unique and not null)
+        type: string
+      patronymic:
+        description: Patronymic (middle name) of the user
+        type: string
+      surname:
+        description: Surname of the user
+        type: string
+      tasks:
+        description: List of tasks associated with the user
+        items:
+          $ref: '#/definitions/models.Task'
+        type: array
+      updatedAt:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API for time tracking application
+  title: Time Tracker API
+  version: "1.0"
+paths:
+  /info:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves information about a person from the database based on
+        passport series and number
+      parameters:
+      - description: Passport series
+        in: query
+        name: passportSeries
+        required: true
+        type: integer
+      - description: Passport number
+        in: query
+        name: passportNumber
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.People'
+      summary: Get information about a person by passport series and number
+      tags:
+      - people
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves users based on optional filters and supports pagination
+      parameters:
+      - description: Passport number
+        in: query
+        name: passportNumber
+        type: string
+      - description: Surname
+        in: query
+        name: surname
+        type: string
+      - description: Name
+        in: query
+        name: name
+        type: string
+      - description: Patronymic
+        in: query
+        name: patronymic
+        type: string
+      - description: Address
+        in: query
+        name: address
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.User'
+            type: array
+      summary: Get users with optional filters and pagination
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Adds a new user based on the provided passport number, fetching
+        details from an external API
+      parameters:
+      - description: Request body with passport number
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.AddUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.User'
+      summary: Add a new user
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a user by ID
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Updates a user's details by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated user object
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+      summary: Update a user by ID
+      tags:
+      - users
+  /users/{id}/tasks:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves time entries for a user within a specified time period
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Start date (format: 2006-01-02T15:04:05)'
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: 'End date (format: 2006-01-02T15:04:05)'
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Task'
+            type: array
+      summary: Get time entries by user ID and period
+      tags:
+      - tasks
+    post:
+      consumes:
+      - application/json
+      description: Adds a new task for a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Task object to be added
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/models.Task'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Task'
+      summary: Add a task for a user
+      tags:
+      - tasks
+  /users/{id}/tasks/{taskID}/end:
+    post:
+      consumes:
+      - application/json
+      description: Ends a task for a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Task ID
+        in: path
+        name: taskID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Task'
+      summary: End a task for a user
+      tags:
+      - tasks
+  /users/{id}/tasks/{taskID}/start:
+    post:
+      consumes:
+      - application/json
+      description: Starts a task for a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Task ID
+        in: path
+        name: taskID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Task'
+      summary: Start a task for a user
+      tags:
+      - tasks
+swagger: "2.0"
